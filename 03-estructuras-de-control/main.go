@@ -4,7 +4,27 @@ import (
 	"fmt"
 )
 
+type Modelo struct {
+	nombre string
+}
+
+type Carro struct {
+	color      string
+	numPuertas int
+	modelo     Modelo
+}
+
 func main() {
+
+	carro1 := Carro{
+		color:      "amarillo",
+		numPuertas: 4,
+		modelo: Modelo{
+			nombre: "Clasico",
+		},
+	}
+
+	fmt.Println(carro1.color)
 
 	// Estructura IF
 	//var status bool = true
