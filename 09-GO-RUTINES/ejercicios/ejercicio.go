@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sync"
 )
 
 type Persona struct {
@@ -17,13 +18,39 @@ var personas = []Persona{
 	{Id: 1, Nombre: "Gerardo", Direccion: "CDMX"},
 }
 
+var (
+	mu sync.Mutex
+)
+
 func main() {
 
-	http.HandleFunc("/data", dataHan)
-	log.Fatal(http.ListenAndServe("8080", nil))
+	//http.HandleFunc("/data", dataHandler)
+	//log.Fatal(http.ListenAndServe("8080", nil))
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		http.HandleFunc("/data", getData)
+		log.Fatal(http.ListenAndServe(":8000", nil))
+	}()
+
+	/*go func() {
+		defer wg.Done()
+		http.HandleFunc("/data", postData)
+		log.Fatal(http.ListenAndServe(":8001", nil))
+	}()
+
+	go func() {
+		defer wg.Done()
+		http.HandleFunc("/data", deleteData)
+		log.Fatal(http.ListenAndServe(":8002", nil))
+	}()*/
+
+	wg.Wait()
 }
 
-func dataHan(w http.ResponseWriter, r *http.Request) {
+func dataHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		getData(w, r)
@@ -42,6 +69,7 @@ func getData(w http.ResponseWriter, r *http.Request) {
 }
 
 func postData(w http.ResponseWriter, r *http.Request) {
+	defer mu.Unlock()
 	var data Persona
 	err := json.NewDecoder(r.Body).Decode(&data)
 
@@ -50,12 +78,14 @@ func postData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mu.Lock()
 	personas = append(personas, data)
 	w.Header().Set("Content-Type", "appication/json")
 	json.NewEncoder(w).Encode(data)
 }
 
 func deleteData(w http.ResponseWriter, r *http.Request) {
+	defer mu.Unlock()
 	var data Persona
 	err := json.NewDecoder(r.Body).Decode(&data)
 
@@ -63,6 +93,8 @@ func deleteData(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	mu.Lock()
 
 	for i, d := range personas {
 		if d.Id == data.Id {
